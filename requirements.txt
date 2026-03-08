@@ -1,0 +1,6 @@
+requests
+pyyaml
+openpyxl
+pandas
+faker
+jupyter
