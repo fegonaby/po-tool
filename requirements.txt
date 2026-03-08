@@ -2,5 +2,6 @@ requests
 pyyaml
 openpyxl
 pandas
+python-dotenv
 faker
 jupyter

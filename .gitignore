@@ -8,8 +8,8 @@ build/
 *.egg
 .eggs/
 
-*.env
-.env.*
+.env
+.env.local
 
 *.db
 *.duckdb
