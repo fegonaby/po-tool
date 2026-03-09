@@ -12,7 +12,7 @@ from pathlib import Path
 import yaml
 
 from config.settings import qualified_table
-from po_tool.core import queue as queue_mgr
+from src.core import queue as queue_mgr
 
 logger = logging.getLogger(__name__)
 

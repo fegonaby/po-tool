@@ -5,7 +5,7 @@ Backend for the Production Orders tool. Queries run against a Databricks SQL War
 ## Structure
 
 ```
-po_tool/
+src/
   core/          Databricks client, queue manager, audit logging, Excel export
   etransfer/     e-Transfer unified query, FI ref resolution, field-selectable export
   debit/         Terminal/merchant/transaction queries, debit export

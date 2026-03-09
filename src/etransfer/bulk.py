@@ -13,8 +13,8 @@ from pathlib import Path
 import pandas as pd
 
 from config.settings import qualified_table
-from po_tool.core import queue as queue_mgr
-from po_tool.etransfer.queries import (
+from src.core import queue as queue_mgr
+from src.etransfer.queries import (
     build_unified_query,
     resolve_fi_ref,
     store_results,

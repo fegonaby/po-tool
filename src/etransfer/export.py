@@ -1,8 +1,8 @@
 """e-Transfer Excel export with field selection."""
 
 from config.settings import qualified_table
-from po_tool.core.export import build_excel, save_excel_to_file
-from po_tool.etransfer.queries import ALWAYS_FIELDS, build_download_sql
+from src.core.export import build_excel, save_excel_to_file
+from src.etransfer.queries import ALWAYS_FIELDS, build_download_sql
 
 _RESULTS = qualified_table("query_results")
 

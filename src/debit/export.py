@@ -1,6 +1,6 @@
 """Debit Excel export."""
 
-from po_tool.core.export import build_excel, save_excel_to_file
+from src.core.export import build_excel, save_excel_to_file
 
 DEBIT_COLUMN_MAPPING = [
     ("issuer_name", "Issuer"),
