@@ -1,0 +1,6 @@
+Sender (x),Recipient (x),Contact (x),Payment Reference Number,FI Reference Number,Email Address,Phone Number (eg 5555555555),Account Number,Name,Amount,IP Address,From Date (YYYY-MM-DD),To Date (YYYY-MM-DD)
+x,,,,,john@example.com,,,,,,2023-01-01,2025-12-31
+,x,,,,jane@example.com,,,,,,2023-06-01,2025-12-31
+x,x,,,,,,,,50.00,,2024-01-01,2024-12-31
+x,,,,,,5551234567,,,,,2023-01-01,2025-12-31
+,,,,REF-000001,,,,,,,,
