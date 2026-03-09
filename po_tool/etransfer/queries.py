@@ -305,15 +305,26 @@ def run_single_search(client, username: str, search_content: dict) -> int:
     sql = build_unified_query(queue_id, queue_id)
     statement_id = client.submit_async(sql)
 
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    # Store statement_id but keep STATUS as QUEUED.  The unified query
+    # JOINs on q.STATUS = 'QUEUED', so the row must stay QUEUED until
+    # Databricks has actually started executing (and already read the
+    # queue table).  The on_running callback handles the transition.
     queue_mgr.update_queue_status(
-        client, queue_id, "PENDING",
+        client, queue_id, "QUEUED",
         statement_id=statement_id,
     )
-    logger.info("Queue %d: submitted as %s", queue_id, statement_id)
+    logger.info("Queue %d: submitted as %s (staying QUEUED until RUNNING)", queue_id, statement_id)
+
+    def _on_running(_sid: str) -> None:
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        queue_mgr.update_queue_status(
+            client, queue_id, "RUNNING",
+            started_date=ts,
+        )
+        logger.info("Queue %d: Databricks confirmed RUNNING", queue_id)
 
     try:
-        final_state = client.poll_until_done(statement_id)
+        final_state = client.poll_until_done(statement_id, on_running=_on_running)
     except Exception as exc:
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         queue_mgr.update_queue_status(

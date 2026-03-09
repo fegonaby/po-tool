@@ -149,12 +149,29 @@ class DatabricksClient:
         )
         return data["statement_id"]
 
-    def poll_until_done(self, statement_id: str, interval: float = 5.0, timeout: float = 600.0) -> str:
-        """Poll until the statement reaches a terminal state. Returns final state."""
+    def poll_until_done(
+        self,
+        statement_id: str,
+        interval: float = 5.0,
+        timeout: float = 600.0,
+        on_running: "callable | None" = None,
+    ) -> str:
+        """Poll until the statement reaches a terminal state. Returns final state.
+
+        If *on_running* is provided, it is called exactly once when the
+        statement first transitions to RUNNING.  This lets callers defer
+        queue-status updates until Databricks has actually started executing
+        (important for cold-start warehouses where PENDING can last minutes).
+        """
         elapsed = 0.0
+        running_fired = False
         while elapsed < timeout:
             status = self.poll_status(statement_id)
             state = status.get("state", "")
+            if state == "RUNNING" and not running_fired:
+                running_fired = True
+                if on_running:
+                    on_running(statement_id)
             if state in ("SUCCEEDED", "FAILED", "CANCELED", "CLOSED"):
                 if state == "FAILED":
                     msg = status.get("error", {}).get("message", "Unknown error")
