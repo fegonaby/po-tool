@@ -24,7 +24,9 @@ _FRAUD_CAT = qualified_table("fraud_categories")
 _QUEUE = qualified_table("query_queue")
 _RESULTS = qualified_table("query_results")
 
-_FI_YAML = Path(__file__).resolve().parent.parent.parent / "config" / "fi_institutions.yaml"
+_FI_YAML = (
+    Path(__file__).resolve().parent.parent.parent / "config" / "fi_institutions.yaml"
+)
 _fi_map: dict[str, str] | None = None
 
 
@@ -39,7 +41,10 @@ def _get_fi_map() -> dict[str, str]:
 def fi_case_sql(column: str, alias: str) -> str:
     """Generate a SQL CASE expression mapping FI codes to readable names."""
     fi_map = _get_fi_map()
-    whens = "\n".join(f"        WHEN {column} = '{code}' THEN '{name}'" for code, name in fi_map.items())
+    whens = "\n".join(
+        f"        WHEN {column} = '{code}' THEN '{name}'"
+        for code, name in fi_map.items()
+    )
     return f"""CASE
 {whens}
         ELSE {column}
@@ -50,15 +55,9 @@ def fi_case_sql(column: str, alias: str) -> str:
 # Unified query
 # ------------------------------------------------------------------
 
+
 def build_unified_query(first_id: int, last_id: int) -> str:
-    """Build the full unified e-Transfer query.
-
-    Uses Databricks SQL dialect: JSON path operator (:), array_contains,
-    from_json, TRY_CAST, CONCAT_WS, NULLIF.
-
-    No detokenize() calls — mock data is cleartext. When tokenized data
-    is available, add detokenize() to WHERE clause matching fields.
-    """
+    """Build the full unified e-Transfer query."""
     sender_fi = fi_case_sql("t.SENDER_FI_ID", "SENDER_FI")
     recipient_fi = fi_case_sql("t.RECIPIENT_FI_ID", "RECIPIENT_FI")
 
@@ -173,6 +172,7 @@ JOIN {_QUEUE} q
 # FI reference pre-resolution
 # ------------------------------------------------------------------
 
+
 def resolve_fi_ref(client, fi_ref_number: str) -> str | None:
     """Look up FI reference number to get payment reference number.
 
@@ -196,18 +196,37 @@ def resolve_fi_ref(client, fi_ref_number: str) -> str | None:
 # Download / export query
 # ------------------------------------------------------------------
 
-ALWAYS_FIELDS = ["PAYMENT_REF_NUMBER", "STATUS_CODE", "TRANSACTION_AMOUNT", "REQUEST_DATE", "RECEIVED_DATE"]
+ALWAYS_FIELDS = [
+    "PAYMENT_REF_NUMBER",
+    "STATUS_CODE",
+    "TRANSACTION_AMOUNT",
+    "REQUEST_DATE",
+    "RECEIVED_DATE",
+]
 
 TOKENIZED_FIELDS = {
-    "SENDER_EMAIL", "SENDER_PHONE", "SENDER_NAME", "SENDER_LEGAL_NAME",
-    "SENDER_FI_USERID", "SENDER_ACCOUNT",
-    "RECIPIENT_EMAIL", "RECIPIENT_PHONE", "RECIPIENT_NAME", "RECIPIENT_LEGAL_NAME",
-    "RECIPIENT_FI_USERID", "RECIPIENT_ACCOUNT",
-    "CONTACT_EMAIL", "CONTACT_PHONE", "CONTACT_NAME", "CONTACT_ACCOUNT",
+    "SENDER_EMAIL",
+    "SENDER_PHONE",
+    "SENDER_NAME",
+    "SENDER_LEGAL_NAME",
+    "SENDER_FI_USERID",
+    "SENDER_ACCOUNT",
+    "RECIPIENT_EMAIL",
+    "RECIPIENT_PHONE",
+    "RECIPIENT_NAME",
+    "RECIPIENT_LEGAL_NAME",
+    "RECIPIENT_FI_USERID",
+    "RECIPIENT_ACCOUNT",
+    "CONTACT_EMAIL",
+    "CONTACT_PHONE",
+    "CONTACT_NAME",
+    "CONTACT_ACCOUNT",
 }
 
 
-def build_download_sql(queue_id_clause: str, selected_fields: list[str] | None = None) -> str:
+def build_download_sql(
+    queue_id_clause: str, selected_fields: list[str] | None = None
+) -> str:
     """Build download query with dynamic field selection.
 
     No detokenize() for now — mock data is cleartext.
@@ -231,15 +250,41 @@ def build_download_sql(queue_id_clause: str, selected_fields: list[str] | None =
 # ------------------------------------------------------------------
 
 _RESULT_COLUMNS = [
-    "QUEUE_ID", "PAYMENT_REF_NUMBER", "STATUS_CODE", "TRANSACTION_AMOUNT",
-    "REQUEST_DATE", "RECEIVED_DATE", "SENDER_EMAIL", "SENDER_PHONE",
-    "SENDER_NAME", "SENDER_LEGAL_NAME", "SENDER_FI", "SENDER_FI_USERID",
-    "SENDER_ACCOUNT", "SENDER_FI_REF", "SENDER_IP", "SENDER_MEMO",
-    "RECIPIENT_EMAIL", "RECIPIENT_PHONE", "RECIPIENT_NAME", "RECIPIENT_LEGAL_NAME",
-    "RECIPIENT_FI", "RECIPIENT_FI_USERID", "RECIPIENT_ACCOUNT", "RECIPIENT_FI_REF",
-    "RECIPIENT_IP", "RECIPIENT_MEMO", "CONTACT_EMAIL", "CONTACT_PHONE",
-    "CONTACT_NAME", "CONTACT_ACCOUNT", "CONTACT_NOTIFICATION", "SECURITY_QUESTION",
-    "TRANSFER_TYPE", "FRAUDULENT", "SCAM_CATEGORY",
+    "QUEUE_ID",
+    "PAYMENT_REF_NUMBER",
+    "STATUS_CODE",
+    "TRANSACTION_AMOUNT",
+    "REQUEST_DATE",
+    "RECEIVED_DATE",
+    "SENDER_EMAIL",
+    "SENDER_PHONE",
+    "SENDER_NAME",
+    "SENDER_LEGAL_NAME",
+    "SENDER_FI",
+    "SENDER_FI_USERID",
+    "SENDER_ACCOUNT",
+    "SENDER_FI_REF",
+    "SENDER_IP",
+    "SENDER_MEMO",
+    "RECIPIENT_EMAIL",
+    "RECIPIENT_PHONE",
+    "RECIPIENT_NAME",
+    "RECIPIENT_LEGAL_NAME",
+    "RECIPIENT_FI",
+    "RECIPIENT_FI_USERID",
+    "RECIPIENT_ACCOUNT",
+    "RECIPIENT_FI_REF",
+    "RECIPIENT_IP",
+    "RECIPIENT_MEMO",
+    "CONTACT_EMAIL",
+    "CONTACT_PHONE",
+    "CONTACT_NAME",
+    "CONTACT_ACCOUNT",
+    "CONTACT_NOTIFICATION",
+    "SECURITY_QUESTION",
+    "TRANSFER_TYPE",
+    "FRAUDULENT",
+    "SCAM_CATEGORY",
 ]
 
 
@@ -264,7 +309,7 @@ def store_results(client, rows: list[dict]) -> int:
     batch_size = 500
     total = 0
     for i in range(0, len(value_rows), batch_size):
-        batch = value_rows[i:i + batch_size]
+        batch = value_rows[i : i + batch_size]
         sql = f"INSERT INTO {_RESULTS} ({col_list}) VALUES {', '.join(batch)}"
         client.execute_sync(sql)
         total += len(batch)
@@ -275,6 +320,7 @@ def store_results(client, rows: list[dict]) -> int:
 # ------------------------------------------------------------------
 # Single search orchestration
 # ------------------------------------------------------------------
+
 
 def run_single_search(client, username: str, search_content: dict) -> int:
     """Execute the full single-search flow.
@@ -297,13 +343,17 @@ def run_single_search(client, username: str, search_content: dict) -> int:
         if payment_ref is None:
             now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
             queue_mgr.update_queue_status(
-                client, queue_id, "FAILED",
+                client,
+                queue_id,
+                "FAILED",
                 error_message="FI reference number not found",
                 completed_date=now,
             )
             logger.warning("Queue %d: FI ref not found", queue_id)
             return queue_id
-        queue_mgr.update_queue_status(client, queue_id, "QUEUED", resolved_ref=payment_ref)
+        queue_mgr.update_queue_status(
+            client, queue_id, "QUEUED", resolved_ref=payment_ref
+        )
         logger.info("Queue %d: FI ref resolved to %s", queue_id, payment_ref)
 
     sql = build_unified_query(queue_id, queue_id)
@@ -314,15 +364,23 @@ def run_single_search(client, username: str, search_content: dict) -> int:
     # Databricks has actually started executing (and already read the
     # queue table).  The on_running callback handles the transition.
     queue_mgr.update_queue_status(
-        client, queue_id, "QUEUED",
+        client,
+        queue_id,
+        "QUEUED",
         statement_id=statement_id,
     )
-    logger.info("Queue %d: submitted as %s (staying QUEUED until RUNNING)", queue_id, statement_id)
+    logger.info(
+        "Queue %d: submitted as %s (staying QUEUED until RUNNING)",
+        queue_id,
+        statement_id,
+    )
 
     def _on_running(_sid: str) -> None:
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         queue_mgr.update_queue_status(
-            client, queue_id, "RUNNING",
+            client,
+            queue_id,
+            "RUNNING",
             started_date=ts,
         )
         logger.info("Queue %d: Databricks confirmed RUNNING", queue_id)
@@ -332,7 +390,9 @@ def run_single_search(client, username: str, search_content: dict) -> int:
     except Exception as exc:
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         queue_mgr.update_queue_status(
-            client, queue_id, "FAILED",
+            client,
+            queue_id,
+            "FAILED",
             error_message=str(exc),
             completed_date=now,
         )
@@ -343,7 +403,9 @@ def run_single_search(client, username: str, search_content: dict) -> int:
         count = store_results(client, results)
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         queue_mgr.update_queue_status(
-            client, queue_id, "SUCCEEDED",
+            client,
+            queue_id,
+            "SUCCEEDED",
             result_count=count,
             completed_date=now,
         )
@@ -351,7 +413,9 @@ def run_single_search(client, username: str, search_content: dict) -> int:
     elif final_state == "CANCELED":
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         queue_mgr.update_queue_status(
-            client, queue_id, "CANCELED",
+            client,
+            queue_id,
+            "CANCELED",
             completed_date=now,
         )
 
