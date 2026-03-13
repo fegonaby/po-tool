@@ -1,6 +1,7 @@
 """Debit query builders — Databricks SQL dialect.
 
-All three steps are synchronous. No QUERY_QUEUE or QUERY_RESULTS involvement.
+Steps 1–2 (terminal/merchant lookup) are synchronous.
+Step 3 (transaction search) is async. No QUERY_QUEUE or QUERY_RESULTS involvement.
 """
 
 from config.settings import qualified_table
@@ -72,7 +73,7 @@ def build_transaction_query(
     amount: float | None = None,
     pan: str | None = None,
 ) -> str:
-    """Transaction search for selected terminals. EXTERNAL_LINKS disposition.
+    """Transaction search for selected terminals. INLINE disposition (async).
 
     Args:
         terminals: List of (terminal_id, merchant_number) tuples.

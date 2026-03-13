@@ -64,12 +64,12 @@ def build_unified_query(first_id: int, last_id: int) -> str:
     return f"""
 SELECT q.ID AS QUEUE_ID,
        t.REFERENCE_NUMBER              AS PAYMENT_REF_NUMBER,
-       CASE t.STATUS_CODE
+       CASE CAST(t.STATUS_CODE AS STRING)
            WHEN '3'  THEN 'Sent'
            WHEN '8'  THEN 'Cancelled'
            WHEN '10' THEN 'Completed'
            WHEN '11' THEN 'Offline'
-           ELSE t.STATUS_CODE
+           ELSE CAST(t.STATUS_CODE AS STRING)
        END AS STATUS_CODE,
        t.AMOUNT                        AS TRANSACTION_AMOUNT,
        t.REQUEST_TIMESTAMP             AS REQUEST_DATE,
@@ -136,15 +136,15 @@ LEFT JOIN (
 JOIN {_QUEUE} q
   ON q.STATUS = 'QUEUED'
   AND q.ID BETWEEN {first_id} AND {last_id}
-  AND t.REQUEST_TIMESTAMP BETWEEN
+  AND (q.SEARCH_CONTENT:From IS NULL OR t.REQUEST_TIMESTAMP BETWEEN
       TRY_CAST(q.SEARCH_CONTENT:From AS DATE)
-      AND TRY_CAST(q.SEARCH_CONTENT:To AS DATE)
+      AND TRY_CAST(q.SEARCH_CONTENT:To AS DATE))
   AND (COALESCE(q.RESOLVED_REF, q.SEARCH_CONTENT:PaymentRefNum) IS NULL
        OR t.REFERENCE_NUMBER = COALESCE(q.RESOLVED_REF, q.SEARCH_CONTENT:PaymentRefNum))
   AND (q.SEARCH_CONTENT:EmailAddress IS NULL OR (
-    (array_contains(from_json(q.SEARCH_CONTENT:Search, 'ARRAY<STRING>'), 'Sender')    AND t.SENDER_EMAIL_ADDRESS     = q.SEARCH_CONTENT:EmailAddress) OR
-    (array_contains(from_json(q.SEARCH_CONTENT:Search, 'ARRAY<STRING>'), 'Recipient') AND t.RECIPIENT_EMAIL_ADDRESS  = q.SEARCH_CONTENT:EmailAddress) OR
-    (array_contains(from_json(q.SEARCH_CONTENT:Search, 'ARRAY<STRING>'), 'Contact')   AND t.CONTACT_EMAIL_ADDRESS    = q.SEARCH_CONTENT:EmailAddress)
+    (array_contains(from_json(q.SEARCH_CONTENT:Search, 'ARRAY<STRING>'), 'Sender')    AND LOWER(t.SENDER_EMAIL_ADDRESS)    = LOWER(q.SEARCH_CONTENT:EmailAddress)) OR
+    (array_contains(from_json(q.SEARCH_CONTENT:Search, 'ARRAY<STRING>'), 'Recipient') AND LOWER(t.RECIPIENT_EMAIL_ADDRESS) = LOWER(q.SEARCH_CONTENT:EmailAddress)) OR
+    (array_contains(from_json(q.SEARCH_CONTENT:Search, 'ARRAY<STRING>'), 'Contact')   AND LOWER(t.CONTACT_EMAIL_ADDRESS)   = LOWER(q.SEARCH_CONTENT:EmailAddress))
   ))
   AND (q.SEARCH_CONTENT:PhoneNumber IS NULL OR (
     (array_contains(from_json(q.SEARCH_CONTENT:Search, 'ARRAY<STRING>'), 'Sender')    AND t.SENDER_PHONE_NUMBER      = q.SEARCH_CONTENT:PhoneNumber) OR

@@ -1,7 +1,7 @@
 """Databricks Statement Execution API client.
 
 Wraps the REST API for submitting SQL, polling status, cancelling,
-and fetching result chunks (both INLINE and EXTERNAL_LINKS).
+and fetching paginated INLINE result chunks.
 """
 
 import logging
@@ -49,7 +49,7 @@ class DatabricksClient:
         sql: str,
         *,
         wait_timeout: str = "0s",
-        disposition: str = "EXTERNAL_LINKS",
+        disposition: str = "INLINE",
         fmt: str = "JSON_ARRAY",
     ) -> dict:
         """POST /sql/statements — submit a SQL statement.
@@ -85,8 +85,9 @@ class DatabricksClient:
         resp.raise_for_status()
 
     def fetch_all_chunks(self, statement_id: str) -> tuple[list[str], list[list]]:
-        """Fetch the full result set for a SUCCEEDED EXTERNAL_LINKS statement.
+        """Fetch the full INLINE result set for a SUCCEEDED statement.
 
+        Follows ``next_chunk_internal_link`` for paginated results.
         Returns (column_names, rows) where rows is a list of lists.
         """
         resp = self._session.get(f"{self._url}/{statement_id}")
@@ -94,20 +95,15 @@ class DatabricksClient:
         data = resp.json()
 
         columns = [c["name"] for c in data.get("manifest", {}).get("schema", {}).get("columns", [])]
-        all_rows: list[list] = []
-        links = data.get("result", {}).get("external_links", [])
+        result = data.get("result", {})
+        all_rows: list[list] = list(result.get("data_array", []))
 
-        for link_info in links:
-            chunk = requests.get(link_info["external_link"]).json()
-            all_rows.extend(chunk)
-
-        while links and "next_chunk_internal_link" in links[-1]:
-            next_url = f"{self.host}{links[-1]['next_chunk_internal_link']}"
-            page = self._session.get(next_url).json()
-            links = page.get("external_links", [])
-            for link_info in links:
-                chunk = requests.get(link_info["external_link"]).json()
-                all_rows.extend(chunk)
+        while "next_chunk_internal_link" in result:
+            next_url = f"{self.host}{result['next_chunk_internal_link']}"
+            resp = self._session.get(next_url)
+            resp.raise_for_status()
+            result = resp.json()
+            all_rows.extend(result.get("data_array", []))
 
         return columns, all_rows
 
@@ -138,14 +134,15 @@ class DatabricksClient:
         raise DatabricksError(error_msg, state=state, statement_id=statement_id)
 
     def submit_async(self, sql: str) -> str:
-        """Submit with EXTERNAL_LINKS + wait_timeout=0s, return statement_id.
+        """Submit with INLINE + wait_timeout=0s, return statement_id.
 
-        For unbounded result sets (e-Transfer search, bulk, debit transactions).
+        For long-running queries (e-Transfer search, bulk, debit transactions).
+        Results are fetched via fetch_all_chunks after polling completes.
         """
         data = self.submit_statement(
             sql,
             wait_timeout="0s",
-            disposition="EXTERNAL_LINKS",
+            disposition="INLINE",
         )
         return data["statement_id"]
 
@@ -182,7 +179,7 @@ class DatabricksClient:
         raise DatabricksError(f"Timed out after {timeout}s", statement_id=statement_id)
 
     def fetch_results_as_dicts(self, statement_id: str) -> list[dict]:
-        """Fetch EXTERNAL_LINKS results and return as list of dicts."""
+        """Fetch INLINE results (with pagination) and return as list of dicts."""
         columns, rows = self.fetch_all_chunks(statement_id)
         return [dict(zip(columns, row)) for row in rows]
 
